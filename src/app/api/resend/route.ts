@@ -1,11 +1,11 @@
 import PasswordResetConfirmationEmail from "@/lib/emails/password-reset-confirmation-email";
 import VerificationEmail from "@/lib/emails/verification-email";
 import WelcomeEmail from "@/lib/emails/welcome-email";
-import { createClient } from "@/utils/supabase/client";
+import { createAdminClient } from "@/utils/supabase/client";
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = new Resend(process.env.NEXT_PUBLIC_RESEND_API_KEY);
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     switch (type) {
       case "verification":
-        const supabase = createClient();
+        const supabase = createAdminClient();
         const res = await supabase.auth.admin.generateLink({
           type: isPasswordReset ? "recovery" : "signup",
           email,

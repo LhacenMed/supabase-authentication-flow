@@ -39,22 +39,20 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Redirect authenticated users to dashboard
-  if (
-    user &&
-    request.nextUrl.pathname.startsWith("/auth")
-  ) {
-    // user is logged in, redirect to dashboard page
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+  const isNewPasswordPage = request.nextUrl.pathname === "/auth/new-password";
+
+  // Protect dashboard routes - must check this first
+  if (!user && request.nextUrl.pathname.startsWith("/dashboard")) {
+    return NextResponse.redirect(new URL("/auth/login", request.url));
   }
 
-  // Protect routes that require authentication
+  // Redirect authenticated users away from auth pages
   if (
-    !user &&
-    !request.nextUrl.pathname.startsWith("/dashboard")
+    user &&
+    request.nextUrl.pathname.startsWith("/auth") &&
+    !isNewPasswordPage
   ) {
-    // user is not logged in, redirect to login page
-    return NextResponse.redirect(new URL("/auth/login", request.url));
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.

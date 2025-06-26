@@ -1,15 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, Variants } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Icons } from "@/components/ui/icons";
-import { Eye, EyeOff } from "lucide-react";
+import { AlertCircle, Eye, EyeOff } from "lucide-react";
 import { newPasswordSchema } from "@/lib/utils/validation";
 import { toast } from "sonner";
 import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
+import { updatePassword } from "@/lib/utils/auth-helpers";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
+
+type FormData = z.infer<typeof newPasswordSchema>;
 
 const formVariants: Variants = {
   hidden: {},
@@ -33,169 +49,160 @@ const inputVariants: Variants = {
 };
 
 export function NewPasswordForm() {
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const router = useRouter();
 
-  async function onSubmit(event: React.FormEvent) {
-    event.preventDefault();
+  const form = useForm<FormData>({
+    resolver: zodResolver(newPasswordSchema),
+    defaultValues: {
+      password: "",
+      confirmPassword: "",
+    },
+  });
+
+  useEffect(() => {
+    const supabase = createClient();
+
+    async function checkSession() {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) {
+        setError(error.message);
+      }
+      if (!data.session) {
+        router.push("/auth/reset-password");
+        return;
+      }
+
+      setUserEmail(data.session.user?.email || null);
+    }
+
+    checkSession();
+  }, [router]);
+
+  async function onSubmit(data: FormData) {
     setIsLoading(true);
-    setErrors({});
+    setError(null);
 
-    const formData = new FormData(event.target as HTMLFormElement);
-    const data = {
-      currentPassword: formData.get("currentPassword") as string,
-      newPassword: formData.get("newPassword") as string,
-      confirmNewPassword: formData.get("confirmNewPassword") as string,
-    };
+    if (!userEmail) {
+      setError("User email not found");
+      return;
+    }
 
     try {
-      const validatedData = newPasswordSchema.parse(data);
-      // TODO: Add your password update logic here
-      // For example: await updatePassword(validatedData)
-      toast.success("Password updated successfully");
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        const zodErrors: Record<string, string> = {};
-        error.errors.forEach((err) => {
-          const path = err.path.join(".");
-          zodErrors[path] = err.message;
+      await updatePassword(data.password);
+
+      if (userEmail) {
+        await fetch("/api/resend", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            type: "password-reset-confirmation",
+            email: userEmail,
+            origin: window.location.origin,
+          }),
         });
-        setErrors(zodErrors);
-        toast.error("Please check the form for errors");
-      } else {
-        toast.error("Something went wrong. Please try again.");
+
+        const supabase = createClient();
+        await supabase.auth.signOut();
+
+        setIsSuccess(true);
+
+        sessionStorage.removeItem("isPasswordReset");
       }
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
   }
 
-  return (
-    <motion.form
-      variants={formVariants}
-      initial="hidden"
-      animate="visible"
-      onSubmit={onSubmit}
-      className="space-y-4"
-    >
-      <motion.div variants={inputVariants} className="space-y-2">
-        <Label htmlFor="currentPassword" className="text-gray-300">
-          Current Password
-        </Label>
-        <div className="relative">
-          <Input
-            id="currentPassword"
-            name="currentPassword"
-            type={showCurrentPassword ? "text" : "password"}
-            required
-            disabled={isLoading}
-            className="bg-gray-800 border-gray-700 text-white pr-10"
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent text-gray-400 hover:text-gray-300"
-            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-          >
-            {showCurrentPassword ? (
-              <EyeOff className="h-4 w-4" />
-            ) : (
-              <Eye className="h-4 w-4" />
-            )}
-            <span className="sr-only">
-              {showCurrentPassword ? "Hide password" : "Show password"}
-            </span>
-          </Button>
-        </div>
-        {errors.currentPassword && (
-          <p className="text-sm text-red-500">{errors.currentPassword}</p>
-        )}
-      </motion.div>
-
-      <motion.div variants={inputVariants} className="space-y-2">
-        <Label htmlFor="newPassword" className="text-gray-300">
-          New Password
-        </Label>
-        <div className="relative">
-          <Input
-            id="newPassword"
-            name="newPassword"
-            type={showNewPassword ? "text" : "password"}
-            required
-            disabled={isLoading}
-            className="bg-gray-800 border-gray-700 text-white pr-10"
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent text-gray-400 hover:text-gray-300"
-            onClick={() => setShowNewPassword(!showNewPassword)}
-          >
-            {showNewPassword ? (
-              <EyeOff className="h-4 w-4" />
-            ) : (
-              <Eye className="h-4 w-4" />
-            )}
-            <span className="sr-only">
-              {showNewPassword ? "Hide password" : "Show password"}
-            </span>
-          </Button>
-        </div>
-        {errors.newPassword && (
-          <p className="text-sm text-red-500">{errors.newPassword}</p>
-        )}
-      </motion.div>
-
-      <motion.div variants={inputVariants} className="space-y-2">
-        <Label htmlFor="confirmNewPassword" className="text-gray-300">
-          Confirm New Password
-        </Label>
-        <div className="relative">
-          <Input
-            id="confirmNewPassword"
-            name="confirmNewPassword"
-            type={showConfirmPassword ? "text" : "password"}
-            required
-            disabled={isLoading}
-            className="bg-gray-800 border-gray-700 text-white pr-10"
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent text-gray-400 hover:text-gray-300"
-            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-          >
-            {showConfirmPassword ? (
-              <EyeOff className="h-4 w-4" />
-            ) : (
-              <Eye className="h-4 w-4" />
-            )}
-            <span className="sr-only">
-              {showConfirmPassword ? "Hide password" : "Show password"}
-            </span>
-          </Button>
-        </div>
-        {errors.confirmNewPassword && (
-          <p className="text-sm text-red-500">{errors.confirmNewPassword}</p>
-        )}
-      </motion.div>
-
-      <motion.div variants={inputVariants}>
+  if (isSuccess) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+        className="text-center space-y-4"
+      >
+        <div className="text-xl text-green-600 font-bold">Password updated</div>
+        <p className="text-gray-300">
+          Your password has been successfully updated. You can now login with
+          your new password.
+        </p>
         <Button
           className="w-full bg-white text-black hover:bg-gray-200"
-          type="submit"
-          disabled={isLoading}
+          onClick={() => router.push("/auth/login")}
         >
-          {isLoading && <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />}
-          Update Password
+          Login
         </Button>
       </motion.div>
-    </motion.form>
+    );
+  }
+
+  return (
+    <div className="space-y4">
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Alert variant="destructive">
+            <AlertCircle className="w-4 h-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </motion.div>
+      )}
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem className="space-y-2">
+                <FormLabel className="text-white">New Password</FormLabel>
+                <FormControl>
+                  <Input className="text-white" type="password" placeholder="********" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="confirmPassword"
+            render={({ field }) => (
+              <FormItem className="space-y-2">
+                <FormLabel className="text-white">Confirm New Password</FormLabel>
+                <FormControl>
+                  <Input
+                    className="text-white"
+                    type="password"
+                    placeholder="********"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? "Updating..." : "Update Password"}
+          </Button>
+        </form>
+      </Form>
+    </div>
   );
 }

@@ -16,19 +16,32 @@ interface VerificationEmailProps {
   isPasswordReset: boolean;
 }
 
-export default function VerificationEmail({ otp, isPasswordReset = false }: VerificationEmailProps) {
+export default function VerificationEmail({
+  otp,
+  isPasswordReset = false,
+}: VerificationEmailProps) {
   return (
     <Html>
       <Head />
-      <Preview>{isPasswordReset ? "Reset your password" : "Verify your email"}</Preview>
+      <Preview>
+        {isPasswordReset ? "Reset your password" : "Verify your email"}
+      </Preview>
       <Body style={main}>
         <Container style={container}>
-          <Heading style={heading}>{isPasswordReset ? "Reset your password" : "Verify your email"}</Heading>
-          <Text style={paragraph}>{isPasswordReset ? "You requested a password reset. Please use the following code to set a new password:" : "Thank you for signing up, please use the following code to verify your email:"}</Text>
+          <Heading style={heading}>
+            {isPasswordReset ? "Reset your password" : "Verify your email"}
+          </Heading>
+          <Text style={paragraph}>
+            {isPasswordReset
+              ? "You requested a password reset. Please use the following code to set a new password:"
+              : "Thank you for signing up, please use the following code to verify your email:"}
+          </Text>
           <Section>
             <Text style={code}>{otp}</Text>
           </Section>
-          <Text style={paragraph}>If you did&apos;nt request this email, you can safely ignore it.</Text>
+          <Text style={paragraph}>
+            If you did&apos;nt request this email, you can safely ignore it.
+          </Text>
         </Container>
       </Body>
     </Html>

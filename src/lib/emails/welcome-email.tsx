@@ -16,8 +16,10 @@ interface WelcomeProps {
   dashboardUrl?: string;
 }
 
-export default function WelcomeEmail({userEmail, dashboardUrl="http://localhost:3000/dashboard"}: WelcomeProps) {
-
+export default function WelcomeEmail({
+  userEmail,
+  dashboardUrl = "http://localhost:3000/dashboard",
+}: WelcomeProps) {
   return (
     <Html>
       <Head />
@@ -25,10 +27,18 @@ export default function WelcomeEmail({userEmail, dashboardUrl="http://localhost:
       <Body style={main}>
         <Container style={container}>
           <Heading style={heading}>Welcome to Rihleti!</Heading>
-          <Text style={paragraph}>Thank you for signing us, {userEmail}!. We&apos;re excited to have you on board.</Text>
-          <Text style={paragraph}>You now can access all features of our platform. If you have any questions, feel free to contact our team.</Text>
+          <Text style={paragraph}>
+            Thank you for signing us, {userEmail}!. We&apos;re excited to have
+            you on board.
+          </Text>
+          <Text style={paragraph}>
+            You now can access all features of our platform. If you have any
+            questions, feel free to contact our team.
+          </Text>
           <Section>
-            <Link href={dashboardUrl} style={button}>Go to Dashboard</Link>
+            <Link href={dashboardUrl} style={button}>
+              Go to Dashboard
+            </Link>
           </Section>
           <Text style={paragraph}>Best regards,</Text>
           <Text style={paragraph}>The Rihleti Team</Text>
@@ -70,4 +80,4 @@ const paragraph = {
 const button = {
   backgroundColor: "#000000",
   color: "#ffffff",
-}
+};

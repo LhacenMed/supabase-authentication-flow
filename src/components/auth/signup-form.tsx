@@ -8,45 +8,80 @@ import { Icons } from "@/components/ui/icons";
 import { Link } from "@/components/ui/link";
 import { Eye, EyeOff } from "lucide-react";
 import { signupSchema } from "@/lib/utils/validation";
-import { toast } from "sonner";
 import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
+
+type FormData = z.infer<typeof signupSchema>;
 
 export function SignupForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
-  async function onSubmit(event: React.FormEvent) {
-    event.preventDefault();
+  const form = useForm<FormData>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+    },
+  });
+
+  async function onSubmit(data: FormData) {
     setIsLoading(true);
-    setErrors({});
-
-    const formData = new FormData(event.target as HTMLFormElement);
-    const data = {
-      name: formData.get("name") as string,
-      email: formData.get("email") as string,
-      password: formData.get("password") as string,
-      confirmPassword: formData.get("confirmPassword") as string,
-    };
+    setError(null);
+    console.log("Starting signup process...");
 
     try {
-      // Validate form data
-      const validatedData = signupSchema.parse(data);
+      console.log("Making API request...");
+      const response = await fetch("/api/resend", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: "verification",
+          email: data.email,
+          password: data.password,
+        }),
+      });
 
-      // TODO: Add your signup logic here
-      // For example: await signUp(validatedData)
+      const result = await response.json();
+      console.log("API response:", result);
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      console.log("Setting session storage...");
+      // Set session storage before redirect
+      window.sessionStorage.setItem("verificationEmail", data.email);
+      window.sessionStorage.setItem("signupPassword", data.password);
+
+      console.log("Checking session storage:", {
+        email: window.sessionStorage.getItem("verificationEmail"),
+        hasPassword: !!window.sessionStorage.getItem("signupPassword"),
+      });
+
+      // Use window.location for navigation instead of Next.js router
+      console.log("Redirecting to verify page...");
+      router.push("/auth/verify");
+      // window.location.href = "/auth/verify";
     } catch (error) {
+      console.error("Signup error:", error);
       if (error instanceof z.ZodError) {
-        const zodErrors: Record<string, string> = {};
-        error.errors.forEach((err: any) => {
-          const path = err.path.join(".");
-          zodErrors[path] = err.message;
-        });
-        setErrors(zodErrors);
-        toast.error("Please check the form for errors");
+        setError(error.message);
       } else {
-        toast.error("Something went wrong. Please try again.");
+        setError(
+          error instanceof Error
+            ? error.message
+            : "An error occurred during signup, please try again."
+        );
       }
     } finally {
       setIsLoading(false);
@@ -54,21 +89,24 @@ export function SignupForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="name" className="text-gray-300">
           Name
         </Label>
         <Input
           id="name"
-          name="name"
+          {...form.register("name")}
           type="text"
           placeholder="John Doe"
-          required
           disabled={isLoading}
-          className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
+          className="border-gray-700 text-white placeholder:text-gray-500"
         />
-        {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
+        {form.formState.errors.name && (
+          <p className="text-sm text-red-500">
+            {form.formState.errors.name.message}
+          </p>
+        )}
       </div>
       <div className="space-y-2">
         <Label htmlFor="email" className="text-gray-300">
@@ -76,14 +114,17 @@ export function SignupForm() {
         </Label>
         <Input
           id="email"
-          name="email"
+          {...form.register("email")}
           type="email"
           placeholder="name@example.com"
-          required
           disabled={isLoading}
-          className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
+          className="border-gray-700 text-white placeholder:text-gray-500"
         />
-        {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
+        {form.formState.errors.email && (
+          <p className="text-sm text-red-500">
+            {form.formState.errors.email.message}
+          </p>
+        )}
       </div>
       <div className="space-y-2">
         <Label htmlFor="password" className="text-gray-300">
@@ -92,12 +133,11 @@ export function SignupForm() {
         <div className="relative">
           <Input
             id="password"
-            name="password"
+            {...form.register("password")}
             type={showPassword ? "text" : "password"}
             placeholder="********"
-            required
             disabled={isLoading}
-            className="bg-gray-800 border-gray-700 text-white pr-10"
+            className="border-gray-700 text-white pr-10"
           />
           <Button
             type="button"
@@ -116,8 +156,14 @@ export function SignupForm() {
             </span>
           </Button>
         </div>
-        {errors.password && (
-          <p className="text-sm text-red-500">{errors.password}</p>
+        <p className="text-sm text-gray-400">
+          Password must be at least 8 characters and contain uppercase,
+          lowercase, and numbers
+        </p>
+        {form.formState.errors.password && (
+          <p className="text-sm text-red-500">
+            {form.formState.errors.password.message}
+          </p>
         )}
       </div>
       <div className="space-y-2">
@@ -127,12 +173,11 @@ export function SignupForm() {
         <div className="relative">
           <Input
             id="confirmPassword"
-            name="confirmPassword"
+            {...form.register("confirmPassword")}
             type={showConfirmPassword ? "text" : "password"}
             placeholder="********"
-            required
             disabled={isLoading}
-            className="bg-gray-800 border-gray-700 text-white pr-10"
+            className="border-gray-700 text-white pr-10"
           />
           <Button
             type="button"
@@ -151,8 +196,10 @@ export function SignupForm() {
             </span>
           </Button>
         </div>
-        {errors.confirmPassword && (
-          <p className="text-sm text-red-500">{errors.confirmPassword}</p>
+        {form.formState.errors.confirmPassword && (
+          <p className="text-sm text-red-500">
+            {form.formState.errors.confirmPassword.message}
+          </p>
         )}
       </div>
       <div className="flex items-center justify-end">

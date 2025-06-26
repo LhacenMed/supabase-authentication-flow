@@ -8,7 +8,7 @@ export async function verifyOtp(email: string, otp: string) {
   const { data, error } = await supabase.auth.verifyOtp({
     token: otp,
     email,
-    type: isPasswordReset ? "recovery" : "signup",
+    type: isPasswordReset ? "recovery" : "email",
   });
 
   if (error) throw error;

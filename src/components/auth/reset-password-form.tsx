@@ -3,84 +3,129 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Icons } from "@/components/ui/icons";
 import { Link } from "@/components/ui/link";
+import { z } from "zod";
+import { resetPasswordSchema } from "@/lib/utils/validation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
+import { motion } from "motion/react";
+import {
+  Form,
+  FormControl,
+  FormItem,
+  FormLabel,
+  FormField,
+  FormMessage,
+} from "@/components/ui/form";
+import { useRouter } from "next/navigation";
+
+type FormData = z.infer<typeof resetPasswordSchema>;
 
 export function ResetPasswordForm() {
   const [isLoading, setIsLoading] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const form = useForm<FormData>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: {
+      email: "",
+    },
+  });
 
-  async function onSubmit(event: React.FormEvent) {
-    event.preventDefault();
+  async function onSubmit(data: FormData) {
     setIsLoading(true);
-
-    const formData = new FormData(event.target as HTMLFormElement);
-    const email = formData.get("email") as string;
+    setError(null);
 
     try {
-      // TODO: Add your password reset logic here
-      // For example: await sendPasswordResetEmail(email)
-      setIsSubmitted(true);
+      sessionStorage.setItem("verificationEmail", data.email);
+      sessionStorage.setItem("isPasswordReset", "true");
+
+      await fetch("/api/resend", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: "verification",
+          email: data.email,
+          isPasswordReset: true,
+          origin: window.location.origin,
+        }),
+      });
+
+      router.push("/auth/verify");
     } catch (error) {
-      // Handle error
-      setIsSubmitted(false);
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to send reset email. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
   }
 
-  if (isSubmitted) {
-    return (
-      <div className="text-center">
-        <Icons.spinner className="mx-auto h-6 w-6 animate-spin text-gray-300" />
-        <p className="mt-4 text-gray-300">
-          If an account exists with that email address, we've sent password
-          reset instructions.
-        </p>
-        <Button
-          variant="link"
-          className="mt-4 text-gray-400 hover:text-gray-300"
-          onClick={() => setIsSubmitted(false)}
-        >
-          Try again
-        </Button>
-      </div>
-    );
-  }
-
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="email" className="text-gray-300">
-          Email
-        </Label>
-        <Input
-          id="email"
-          name="email"
-          type="email"
-          placeholder="name@example.com"
-          required
-          disabled={isLoading}
-          className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
-        />
-      </div>
-      <div className="flex items-center justify-between">
-        <Link
-          href="/auth/login"
-          className="text-sm text-gray-400 hover:text-gray-300 transition-colors"
+    <div className="space-y-4">
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
         >
-          Back to login
-        </Link>
-      </div>
-      <Button
-        className="w-full bg-white text-black hover:bg-gray-300"
-        type="submit"
-        disabled={isLoading}
-      >
-        {isLoading && <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />}
-        Send Reset Link
-      </Button>
-    </form>
+          <Alert variant="destructive">
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </motion.div>
+      )}
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white">Email</FormLabel>
+                <FormControl>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="name@example.com"
+                    required
+                    disabled={isLoading}
+                    className="border-gray-700 text-white placeholder:text-gray-500"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <Button
+            className="w-full bg-white text-black hover:bg-gray-300"
+            type="submit"
+            disabled={isLoading}
+          >
+            {isLoading && (
+              <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            Send OTP
+          </Button>
+          <div className="flex items-center justify-between">
+            <Link
+              href="/auth/login"
+              className="text-sm text-gray-400 hover:text-gray-300 transition-colors"
+            >
+              Back to login
+            </Link>
+          </div>
+        </form>
+      </Form>
+    </div>
   );
 }

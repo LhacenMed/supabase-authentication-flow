@@ -11,7 +11,7 @@ export default function ResetPasswordPage() {
   return (
     <AuthForm
       title="Reset Password"
-      description="Enter your email address and we'll send you a link to reset your password"
+      description="Enter your email address to confirm your password reset request"
     >
       <ResetPasswordForm />
     </AuthForm>
