@@ -57,7 +57,9 @@ export function LoginForm() {
     }
   }
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (e: React.FormEvent) => {
+    e.preventDefault();
+
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
