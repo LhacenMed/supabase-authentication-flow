@@ -1,72 +1,49 @@
-import { createServerClient } from "@supabase/ssr";
+import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs";
 import { NextResponse, type NextRequest } from "next/server";
 
+// Define protected and auth routes
+const protectedRoutes = ["/dashboard"];
+const authRoutes = ["/auth/login", "/auth/signup", "/auth/reset-password"];
+
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
+  // Create an unmodified response
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
   });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({
-            request,
-          });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
+  // Create client with response/request
+  const supabase = createMiddlewareClient({ req: request, res: response });
 
-  // Do not run code between createServerClient and
-  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
-
-  // IMPORTANT: DO NOT REMOVE auth.getUser()
+  // Refresh session if expired - required for Server Components
+  await supabase.auth.getSession();
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isNewPasswordPage = request.nextUrl.pathname === "/auth/new-password";
+  const path = request.nextUrl.pathname;
+  const isAuthPage = authRoutes.includes(path);
+  const isProtectedRoute = protectedRoutes.some((route) =>
+    path.startsWith(route)
+  );
+  const isNewPasswordPage = path === "/auth/new-password";
 
-  // Protect dashboard routes - must check this first
-  if (!user && request.nextUrl.pathname.startsWith("/dashboard")) {
-    return NextResponse.redirect(new URL("/auth/login", request.url));
+  // Handle protected routes
+  if (!user && isProtectedRoute) {
+    return NextResponse.redirect(new URL("/unauthenticated", request.url));
   }
 
-  // Redirect authenticated users away from auth pages
-  if (
-    user &&
-    request.nextUrl.pathname.startsWith("/auth") &&
-    !isNewPasswordPage
-  ) {
+  // Handle auth pages
+  if (user && isAuthPage && !isNewPasswordPage) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  // IMPORTANT: You *must* return the supabaseResponse object as it is.
-  // If you're creating a new response object with NextResponse.next() make sure to:
-  // 1. Pass the request in it, like so:
-  //    const myNewResponse = NextResponse.next({ request })
-  // 2. Copy over the cookies, like so:
-  //    myNewResponse.cookies.setAll(supabaseResponse.cookies.getAll())
-  // 3. Change the myNewResponse object to fit your needs, but avoid changing
-  //    the cookies!
-  // 4. Finally:
-  //    return myNewResponse
-  // If this is not done, you may be causing the browser and server to go out
-  // of sync and terminate the user's session prematurely!
+  // Handle unauthenticated page
+  if (user && path === "/unauthenticated") {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
 
-  return supabaseResponse;
+  return response;
 }

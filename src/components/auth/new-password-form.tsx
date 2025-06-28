@@ -27,32 +27,13 @@ import {
 
 type FormData = z.infer<typeof newPasswordSchema>;
 
-const formVariants: Variants = {
-  hidden: {},
-  visible: {
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
-
-const inputVariants: Variants = {
-  hidden: { opacity: 0, x: -20 },
-  visible: {
-    opacity: 1,
-    x: 0,
-    transition: {
-      duration: 0.3,
-      ease: [0.645, 0.045, 0.355, 1],
-    },
-  },
-};
-
 export function NewPasswordForm() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
 
   const form = useForm<FormData>({
@@ -173,7 +154,27 @@ export function NewPasswordForm() {
               <FormItem className="space-y-2">
                 <FormLabel className="text-white">New Password</FormLabel>
                 <FormControl>
-                  <Input className="text-white" type="password" placeholder="********" {...field} />
+                  <div className="relative">
+                    <Input
+                      className="text-white border-gray-700 placeholder:text-gray-500 pr-10"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="********"
+                      {...field}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-0 top-1/2 -translate-y-1/2 h-full px-3 hover:bg-transparent"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4 text-gray-400" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-gray-400" />
+                      )}
+                    </Button>
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -184,14 +185,33 @@ export function NewPasswordForm() {
             name="confirmPassword"
             render={({ field }) => (
               <FormItem className="space-y-2">
-                <FormLabel className="text-white">Confirm New Password</FormLabel>
+                <FormLabel className="text-white">
+                  Confirm New Password
+                </FormLabel>
                 <FormControl>
-                  <Input
-                    className="text-white"
-                    type="password"
-                    placeholder="********"
-                    {...field}
-                  />
+                  <div className="relative">
+                    <Input
+                      className="text-white border-gray-700 placeholder:text-gray-500 pr-10"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="********"
+                      {...field}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
+                      className="absolute right-0 top-1/2 -translate-y-1/2 h-full px-3 hover:bg-transparent"
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4 text-gray-400" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-gray-400" />
+                      )}
+                    </Button>
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>

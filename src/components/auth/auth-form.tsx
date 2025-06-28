@@ -3,6 +3,11 @@
 import { CardFooter } from "@/components/ui/card";
 import { NavigationProgress } from "@/components/navigation-progress";
 import { motion, Variants } from "motion/react";
+import { useEffect } from "react";
+import { useState } from "react";
+import { createClient } from "@/utils/supabase/client";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
 interface AuthFormProps {
   title: string;
@@ -43,6 +48,33 @@ export function AuthForm({
   children,
   footer,
 }: AuthFormProps) {
+  // const [loading, setLoading] = useState(true);
+  // const router = useRouter();
+  // const supabase = createClient();
+
+  // useEffect(() => {
+  //   const getUser = async () => {
+  //     const {
+  //       data: { user },
+  //       error,
+  //     } = await supabase.auth.getUser();
+  //     if (user) {
+  //       return router.push("/dashboard");
+  //     }
+  //     setLoading(false);
+  //   };
+
+  //   getUser();
+  // }, [router]);
+
+  // if (loading) {
+  //   return (
+  //     <div className="p-4 bg-black text-white min-h-screen flex items-center justify-center">
+  //       <Loader2 className="w-10 h-10 animate-spin" />
+  //     </div>
+  //   );
+  // }
+
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-12 sm:px-6 lg:px-8 bg-gray-950">
       <NavigationProgress />

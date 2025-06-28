@@ -3,17 +3,17 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+// import { Label } from "@/components/ui/label";
 import { Icons } from "@/components/ui/icons";
 import { Link } from "@/components/ui/link";
 import { Eye, EyeOff } from "lucide-react";
 import { loginSchema } from "@/lib/utils/validation";
-import { toast } from "sonner";
+// import { toast } from "sonner";
 import { z } from "zod";
 import { login } from "@/lib/utils/auth-helpers";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import { Separator } from "../ui/separator";
+import { Separator } from "@/components/ui/separator";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { motion } from "framer-motion";
@@ -62,7 +62,7 @@ export function LoginForm() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: window.location.origin + "/dashboard",
+        redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
 
@@ -116,15 +116,30 @@ export function LoginForm() {
               <FormItem>
                 <FormLabel className="text-white">Password</FormLabel>
                 <FormControl>
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="********"
-                    required
-                    disabled={isLoading}
-                    className="border-gray-700 text-white placeholder:text-gray-500"
-                    {...field}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="********"
+                      required
+                      disabled={isLoading}
+                      className="border-gray-700 text-white placeholder:text-gray-500 pr-10"
+                      {...field}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-0 top-1/2 -translate-y-1/2 h-full px-3 hover:bg-transparent"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4 text-gray-400" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-gray-400" />
+                      )}
+                    </Button>
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
