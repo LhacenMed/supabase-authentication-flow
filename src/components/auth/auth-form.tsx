@@ -76,7 +76,7 @@ export function AuthForm({
   // }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-12 sm:px-6 lg:px-8 bg-gray-950">
+    <div className="flex min-h-screen items-center justify-center px-4 py-12 sm:px-6 lg:px-8 bg-black">
       <NavigationProgress />
       <motion.div
         className="w-full max-w-md mx-auto space-y-6 p-6 bg-gray-950 rounded-2xl shadow-xl border border-gray-700"
